@@ -1,0 +1,50 @@
+# .gitignore for ESP32 PlatformIO Project
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/
+.clang_complete
+.gcc-flags.json
+
+# Build artifacts
+*.o
+*.a
+*.bin
+*.elf
+*.map
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Credentials (if you create a separate file)
+credentials.h
+secrets.h
+
+# Test outputs
+test_output/
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
