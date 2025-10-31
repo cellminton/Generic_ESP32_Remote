@@ -23,6 +23,7 @@
 #include "CommandParser.h"
 #include "PinController.h"
 #include "NetworkServer.h"
+#include "SerialCommandHandler.h"
 
 // Global instances
 WiFiManager wifiManager;
@@ -30,6 +31,7 @@ WatchdogManager watchdogManager;
 CommandParser commandParser;
 PinController pinController;
 NetworkServer *networkServer = nullptr;
+SerialCommandHandler *serialHandler = nullptr;
 
 // Status LED control
 unsigned long lastLEDBlink = 0;
@@ -42,6 +44,13 @@ unsigned long lastHeartbeat = 0;
 // Restart flag (set by RESET command)
 bool restartRequested = false;
 unsigned long restartTime = 0;
+
+// Restart callback for serial command handler
+void requestRestart(unsigned long delayMs)
+{
+    restartRequested = true;
+    restartTime = millis() + delayMs;
+}
 
 void setup()
 {
@@ -74,6 +83,13 @@ void setup()
     Serial.println("[Main] Initializing Pin Controller...");
 #endif
     pinController.begin();
+
+// Initialize serial command handler
+#if ENABLE_SERIAL_DEBUG
+    Serial.println("[Main] Initializing Serial Command Handler...");
+#endif
+    serialHandler = new SerialCommandHandler(commandParser, pinController, wifiManager, watchdogManager);
+    serialHandler->setRestartCallback(requestRestart);
 
 // Initialize WiFi manager
 #if ENABLE_SERIAL_DEBUG
@@ -174,6 +190,12 @@ void loop()
         }
     }
 
+    // Handle serial commands
+    if (serialHandler != nullptr)
+    {
+        serialHandler->processSerialCommands();
+    }
+
 // Handle status LED
 #if STATUS_LED_PIN >= 0
     unsigned long currentMillis = millis();
@@ -218,91 +240,4 @@ void loop()
 
     // Small delay to prevent tight loop
     delay(10);
-}
-
-// Optional: Handle serial commands for debugging
-void serialEvent()
-{
-    if (Serial.available())
-    {
-        String command = Serial.readStringUntil('\n');
-        command.trim();
-
-        if (command.length() > 0)
-        {
-#if ENABLE_SERIAL_DEBUG
-            Serial.printf("[Serial] Command: %s\n", command.c_str());
-#endif
-
-            // Parse and execute command
-            Command cmd = commandParser.parse(command);
-
-            if (!cmd.isValid())
-            {
-                Serial.println(commandParser.generateResponse(cmd, false));
-                return;
-            }
-
-            bool success = false;
-            String message = "";
-            int resultValue = -1;
-
-            switch (cmd.type)
-            {
-            case CommandType::SET:
-                success = pinController.setDigital(cmd.pin, cmd.value);
-                message = success ? "Pin set successfully" : "Failed to set pin";
-                resultValue = cmd.value;
-                break;
-
-            case CommandType::GET:
-                resultValue = pinController.getDigital(cmd.pin);
-                success = (resultValue >= 0);
-                message = success ? "Pin value retrieved" : "Failed to get pin value";
-                break;
-
-            case CommandType::TOGGLE:
-                success = pinController.toggle(cmd.pin);
-                if (success)
-                {
-                    resultValue = pinController.getDigital(cmd.pin);
-                    message = "Pin toggled successfully";
-                }
-                else
-                {
-                    message = "Failed to toggle pin";
-                }
-                break;
-
-            case CommandType::PWM:
-                success = pinController.setPWM(cmd.pin, cmd.value);
-                message = success ? "PWM set successfully" : "Failed to set PWM";
-                resultValue = cmd.value;
-                break;
-
-            case CommandType::STATUS:
-                Serial.println(wifiManager.getStatusString());
-                Serial.println(pinController.getAllPinStates());
-                Serial.println(watchdogManager.getErrorStats());
-                return;
-
-            case CommandType::RESET:
-                Serial.println("Restarting in 2 seconds...");
-                restartRequested = true;
-                restartTime = millis() + 2000;
-                return;
-
-            case CommandType::HELP:
-                Serial.println(commandParser.getHelpText());
-                return;
-
-            default:
-                message = "Unknown command";
-                success = false;
-                break;
-            }
-
-            Serial.println(commandParser.generateResponse(cmd, success, message, resultValue));
-        }
-    }
 }

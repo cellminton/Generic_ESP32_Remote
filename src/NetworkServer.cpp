@@ -233,9 +233,9 @@ String NetworkServer::generateStatusResponse()
     // System info
     JsonObject system = doc["system"].to<JsonObject>();
     system["uptime"] = watchdogManager.getUptimeSeconds();
-    system["free_heap"] = ESP.getFreeHeap();
-    system["chip_model"] = ESP.getChipModel();
-    system["cpu_freq"] = ESP.getCpuFreqMHz();
+    system["freeHeap"] = ESP.getFreeHeap();
+    system["chipModel"] = ESP.getChipModel();
+    system["cpuFreq"] = ESP.getCpuFreqMHz();
 
     // WiFi info
     JsonObject wifi = doc["wifi"].to<JsonObject>();
@@ -246,17 +246,17 @@ String NetworkServer::generateStatusResponse()
 
     // Server info
     JsonObject server = doc["server"].to<JsonObject>();
-    server["tcp_port"] = TCP_SERVER_PORT;
-    server["udp_port"] = UDP_SERVER_PORT;
-    server["tcp_clients"] = getConnectedClients();
+    server["tcpPort"] = TCP_SERVER_PORT;
+    server["udpPort"] = UDP_SERVER_PORT;
+    server["tcpClients"] = getConnectedClients();
 
     // Pin states
-    doc["pin_states"] = _pinController.getStateJSON();
+    doc["pinStates"] = _pinController.getStateJSON();
 
     // Watchdog info
     JsonObject wdt = doc["watchdog"].to<JsonObject>();
-    wdt["error_count"] = watchdogManager.getErrorCount();
-    wdt["last_error"] = watchdogManager.getLastError();
+    wdt["errorCount"] = watchdogManager.getErrorCount();
+    wdt["lastError"] = watchdogManager.getLastError();
 
     String response;
     serializeJsonPretty(doc, response);

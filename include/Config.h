@@ -27,6 +27,7 @@ struct WiFiCredentials
 const WiFiCredentials WIFI_NETWORKS[] = {
     {"Meta-Soziales-Netzwerk", "IjWbw21$"},
     {"JUSTUS'", "thisisjustus'wifi"},
+    {"nufology", "nufonufo"},
     // Add more networks as needed
 };
 

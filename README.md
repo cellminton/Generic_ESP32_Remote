@@ -154,6 +154,148 @@ RESET           # Restart system
 HELP            # Get command help
 ```
 
+## Client Examples
+
+### Python Client with Auto-Discovery
+
+The Python client (`examples/python_client.py`) includes automatic device
+discovery:
+
+#### Quick Start - Auto-Discovery
+
+```python
+from python_client import ESP32Controller
+
+# Automatically find and connect to ESP32
+esp = ESP32Controller(auto_discover=True)
+
+# Use the controller
+esp.connect_tcp()
+esp.set_pin(13, 1)
+status = esp.get_status()
+print(f"Device IP: {status['wifi']['ip']}")
+esp.disconnect_tcp()
+```
+
+#### Manual IP Address
+
+```python
+# Connect using known IP address
+esp = ESP32Controller("192.168.1.100")
+esp.connect_tcp()
+# ... use controller
+esp.disconnect_tcp()
+```
+
+#### Discovery Methods
+
+The Python client supports automatic IP caching and multiple discovery methods:
+
+**Discovery Priority:**
+
+1. **Cached IP** (fastest): Tries last known IP first
+2. **mDNS Resolution**: Fast lookup using hostname
+3. **UDP Broadcast Scan**: Network-wide scan (most reliable)
+
+The client automatically saves the last successful IP to `~/.esp32_last_ip`,
+making subsequent connections near-instant.
+
+**Manual Discovery Methods:**
+
+1. **mDNS Resolution** (if supported):
+
+```python
+ip = ESP32Controller.discover_mdns("esp32-controller.local")
+```
+
+2. **UDP Broadcast Scan** (most reliable):
+
+```python
+devices = ESP32Controller.discover_devices(timeout=3.0)
+for ip, info in devices:
+    print(f"Found ESP32 at {ip}")
+```
+
+3. **Combined Auto-Discovery** (recommended):
+
+```python
+ip = ESP32Controller.find_esp32()  # Tries cached IP, mDNS, then UDP broadcast
+```
+
+4. **Disable cache** (force new scan):
+
+```python
+ip = ESP32Controller.find_esp32(use_cache=False)
+```
+
+#### Standalone Discovery Tool
+
+Use the discovery tool to find devices on your network:
+
+```bash
+python examples/discover_esp32.py
+```
+
+#### Demo Script
+
+For comprehensive examples of all features, run the demo script:
+
+```bash
+python examples/esp32_demo.py
+```
+
+The demo includes:
+
+- Basic pin control (set, get, toggle)
+- PWM control with fade effects
+- Multiple pin control and patterns
+- TCP vs UDP performance comparison
+- Interactive command mode
+
+Output example:
+
+```
+============================================================
+ ESP32 Device Discovery Tool
+============================================================
+
+[1] Trying cached IP (192.168.1.100)...
+    ✓ Cached IP still valid!
+
+    Device available at: 192.168.1.100
+============================================================
+```
+
+Or if no cached IP exists:
+
+```
+============================================================
+ ESP32 Device Discovery Tool
+============================================================
+
+[1] Trying cached IP (192.168.1.100)...
+    ✗ Cached IP no longer responds
+
+[2] Trying mDNS resolution (esp32-controller.local)...
+    ✗ mDNS resolution failed
+
+[3] Performing UDP broadcast scan...
+    Listening for responses (3 seconds)...
+
+    ✓ Found 1 device(s):
+
+    Device #1: 192.168.1.100
+    ──────────────────────────────────────────────────
+      Uptime:        3600 seconds
+      Free Heap:     245678 bytes
+      Chip Model:    ESP32-D0WDQ6
+      WiFi SSID:     YourNetwork
+      WiFi RSSI:     -45 dBm
+      MAC Address:   AA:BB:CC:DD:EE:FF
+
+============================================================
+```
+
 ## Usage Examples
 
 ### Using TCP (Telnet)
@@ -277,9 +419,9 @@ All commands return JSON responses:
   "command": "STATUS",
   "system": {
     "uptime": 3600,
-    "free_heap": 245678,
-    "chip_model": "ESP32-D0WDQ6",
-    "cpu_freq": 240
+    "freeHeap": 245678,
+    "chipModel": "ESP32-D0WDQ6",
+    "cpuFreq": 240
   },
   "wifi": {
     "connected": true,
@@ -288,13 +430,13 @@ All commands return JSON responses:
     "rssi": -45
   },
   "server": {
-    "tcp_port": 8888,
-    "udp_port": 8889,
-    "tcp_clients": 2
+    "tcpPort": 8888,
+    "udpPort": 8889,
+    "tcpClients": 2
   },
   "watchdog": {
-    "error_count": 0,
-    "last_error": ""
+    "errorCount": 0,
+    "lastError": ""
   }
 }
 ```
@@ -350,14 +492,21 @@ Generic_Control/
 │   ├── WatchdogManager.h     # Watchdog timers
 │   ├── CommandParser.h       # Command parsing
 │   ├── PinController.h       # Pin control
-│   └── NetworkServer.h       # TCP/UDP servers
+│   ├── NetworkServer.h       # TCP/UDP servers
+│   └── SerialCommandHandler.h # Serial command handling
 ├── src/
 │   ├── main.cpp              # Main application
 │   ├── WiFiManager.cpp
 │   ├── WatchdogManager.cpp
 │   ├── CommandParser.cpp
 │   ├── PinController.cpp
-│   └── NetworkServer.cpp
+│   ├── NetworkServer.cpp
+│   └── SerialCommandHandler.cpp
+├── examples/
+│   ├── python_client.py      # Python client with auto-discovery
+│   ├── discover_esp32.py     # Network discovery tool
+│   ├── nodejs_client.js      # Node.js example client
+│   └── test_commands.sh      # Bash test script
 ├── platformio.ini            # PlatformIO configuration
 └── README.md                 # This file
 ```
