@@ -163,3 +163,33 @@ String WatchdogManager::getErrorStats()
 
     return stats;
 }
+
+void WatchdogManager::suspend()
+{
+#if ENABLE_HW_WATCHDOG
+    if (_hwWatchdogEnabled)
+    {
+#if ENABLE_SERIAL_DEBUG
+        Serial.println("[WDT] Temporarily suspending watchdog monitoring");
+#endif
+        // Remove current task from watchdog monitoring
+        esp_task_wdt_delete(NULL);
+    }
+#endif
+}
+
+void WatchdogManager::resume()
+{
+#if ENABLE_HW_WATCHDOG
+    if (_hwWatchdogEnabled)
+    {
+#if ENABLE_SERIAL_DEBUG
+        Serial.println("[WDT] Resuming watchdog monitoring");
+#endif
+        // Re-add current task to watchdog monitoring
+        esp_task_wdt_add(NULL);
+        esp_task_wdt_reset();
+        _lastFeed = millis();
+    }
+#endif
+}

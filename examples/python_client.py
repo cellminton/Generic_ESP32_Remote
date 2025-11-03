@@ -74,6 +74,22 @@ class ESP32Controller:
             pass
         return None
 
+    # reset all pins to low
+    def reset_pins(self):
+        """Reset all pins to LOW (0)."""
+        print("Resetting all pins to LOW...")
+        if self.verbose:
+            print("Resetting all pins to LOW...")
+        command = {"cmd": "RESET_PINS"}
+        response = self.send_tcp(command)
+        success = response and response.get("success", False)
+        if self.verbose:
+            if success:
+                print("  ✓ All pins reset to LOW")
+            else:
+                print("  ✗ Failed to reset pins")
+        return success
+
     @staticmethod
     def _test_ip(ip: str, udp_port: int = 8889, timeout: float = 1.0) -> bool:
         """
@@ -324,7 +340,11 @@ class ESP32Controller:
             cmd_str = json.dumps(command) + '\n'
             self.tcp_socket.send(cmd_str.encode())
 
-            # Read response line by line until we get a JSON response
+            # Read response - accumulate lines until we have valid JSON
+            json_buffer = ""
+            brace_count = 0
+            in_json = False
+
             while True:
                 line = self.tcp_file.readline()
                 if not line:
@@ -332,14 +352,33 @@ class ESP32Controller:
 
                 line = line.strip()
 
-                # Skip empty lines and non-JSON lines
-                if line and line.startswith('{'):
-                    return json.loads(line)
+                # Skip empty lines before JSON starts
+                if not line:
+                    if not in_json:
+                        continue
+                    else:
+                        # Empty line after JSON started might mean end
+                        if brace_count == 0 and json_buffer:
+                            break
+
+                # Check if this line starts JSON
+                if line.startswith('{'):
+                    in_json = True
+
+                # If we're in JSON, accumulate the line
+                if in_json:
+                    json_buffer += line
+                    # Count braces to know when JSON is complete
+                    brace_count += line.count('{') - line.count('}')
+
+                    # When braces balance, we have complete JSON
+                    if brace_count == 0 and json_buffer:
+                        return json.loads(json_buffer)
 
         except json.JSONDecodeError as e:
             if self.verbose:
                 print(f"✗ JSON parse error: {e}")
-                print(f"Received: {line}")
+                print(f"Received: {json_buffer[:200]}")  # Show first 200 chars
             self.disconnect_tcp()
             return None
         except Exception as e:
@@ -449,8 +488,14 @@ class ESP32Controller:
         command = {"cmd": "STATUS"}
         response = self.send_tcp(
             command) if use_tcp else self.send_udp(command)
-        if self.verbose and response:
-            print("  ✓ Status received")
+        if self.verbose:
+            if response:
+                print("  ✓ Status received")
+                # Debug: show what we got
+                if not response.get("success"):
+                    print(f"  ⚠ Response marked as unsuccessful: {response}")
+            else:
+                print("  ✗ No response received")
         return response
 
     def reset(self, use_tcp: bool = True) -> bool:
@@ -464,81 +509,3 @@ class ESP32Controller:
         if self.verbose and success:
             print("  ✓ Restart command sent")
         return success
-
-
-# Example usage
-if __name__ == "__main__":
-    """
-    Simple example of using the ESP32Controller class.
-    For more comprehensive demos, see esp32_demo.py
-    """
-    print("=" * 60)
-    print(" ESP32 Pin Controller - Quick Example")
-    print("=" * 60)
-
-    # Option 1: Auto-discover device (recommended)
-    try:
-        print("\nSearching for ESP32 device...")
-        esp = ESP32Controller(auto_discover=True)
-    except (ConnectionError, ValueError) as e:
-        print(f"\n✗ Error: {e}")
-        print("\nTroubleshooting:")
-        print("  • Make sure the ESP32 is powered on")
-        print("  • Verify it's connected to WiFi")
-        print("  • Ensure your computer is on the same network")
-        print("\nYou can also specify IP manually:")
-        print('  esp = ESP32Controller("192.168.1.100")')
-        exit(1)
-
-    # Option 2: Manual IP address
-    # esp = ESP32Controller("192.168.1.100")
-
-    # Option 3: Find device first, then connect
-    # ip = ESP32Controller.find_esp32()
-    # if ip:
-    #     esp = ESP32Controller(ip)
-    # else:
-    #     print("No device found")
-    #     exit(1)
-
-    print("\n" + "=" * 60)
-    print(" Running Quick Test")
-    print("=" * 60 + "\n")
-
-    # Connect via TCP
-    if esp.connect_tcp():
-        print("✓ Connected to ESP32\n")
-
-        # Get system status
-        print("1. Getting system status...")
-        status = esp.get_status()
-        if status:
-            system = status.get('system', {})
-            wifi = status.get('wifi', {})
-            print(f"   Uptime:    {system.get('uptime', 0)} seconds")
-            print(f"   WiFi:      {wifi.get('ssid', 'N/A')}")
-            print(f"   IP:        {wifi.get('ip', 'N/A')}\n")
-        else:
-            print("   ✗ Failed to get status\n")
-
-        # Toggle pin 13 a few times
-        print("2. Toggling pin 13 (3 times)...")
-        for i in range(3):
-            if esp.toggle_pin(13):
-                state = esp.get_pin(13)
-                print(f"   Toggle {i+1}: Pin 13 = {state}")
-                time.sleep(0.5)
-
-        print("\n3. Setting pin 13 LOW...")
-        if esp.set_pin(13, 0):
-            print("   ✓ Success\n")
-
-        # Cleanup
-        esp.disconnect_tcp()
-        print("=" * 60)
-        print("Test completed successfully!")
-        print("For more examples, run: python esp32_demo.py")
-        print("=" * 60)
-    else:
-        print("✗ Failed to connect to ESP32")
-        print("Make sure the device is powered on and connected to WiFi")

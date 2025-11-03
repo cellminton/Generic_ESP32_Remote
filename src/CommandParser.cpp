@@ -110,6 +110,7 @@ Command CommandParser::parseJSON(const String &jsonString)
 
     case CommandType::STATUS:
     case CommandType::RESET:
+    case CommandType::RESET_PINS:
     case CommandType::HELP:
         // These commands don't require parameters
         break;
@@ -226,6 +227,7 @@ Command CommandParser::parseText(const String &textString)
 
     case CommandType::STATUS:
     case CommandType::RESET:
+    case CommandType::RESET_PINS:
     case CommandType::HELP:
         // No parameters needed
         break;
@@ -325,6 +327,8 @@ CommandType CommandParser::stringToCommandType(const String &cmdStr)
         return CommandType::STATUS;
     if (cmdStr == "RESET")
         return CommandType::RESET;
+    if (cmdStr == "RESET_PINS")
+        return CommandType::RESET_PINS;
     if (cmdStr == "HELP")
         return CommandType::HELP;
     return CommandType::INVALID;
@@ -346,6 +350,8 @@ String CommandParser::commandTypeToString(CommandType type)
         return "STATUS";
     case CommandType::RESET:
         return "RESET";
+    case CommandType::RESET_PINS:
+        return "RESET_PINS";
     case CommandType::HELP:
         return "HELP";
     default:

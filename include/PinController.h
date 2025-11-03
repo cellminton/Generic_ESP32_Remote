@@ -69,7 +69,7 @@ public:
     String getAllPinStates();
 
     // Reset all pins to default state
-    void resetAllPins();
+    bool resetAllPins();
 
     // Get state as JSON string
     String getStateJSON();

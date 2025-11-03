@@ -30,13 +30,14 @@
 enum class CommandType
 {
     INVALID,
-    SET,    // Set pin to HIGH or LOW
-    GET,    // Get current pin state
-    TOGGLE, // Toggle pin state
-    PWM,    // Set PWM value (0-255)
-    STATUS, // Get system status
-    RESET,  // Reset/restart system
-    HELP    // Get help information
+    SET,        // Set pin to HIGH or LOW
+    GET,        // Get current pin state
+    TOGGLE,     // Toggle pin state
+    PWM,        // Set PWM value (0-255)
+    STATUS,     // Get system status
+    RESET,      // Reset/restart system
+    RESET_PINS, // Reset all pins to LOW
+    HELP        // Get help information
 };
 
 struct Command

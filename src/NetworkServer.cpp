@@ -211,6 +211,11 @@ String NetworkServer::processCommand(const String &commandStr)
         // Note: Actual restart will be handled in main loop
         break;
 
+    case CommandType::RESET_PINS:
+        success = _pinController.resetAllPins();
+        message = success ? "All pins reset to LOW" : "Failed to reset pins";
+        break;
+
     case CommandType::HELP:
         return _parser.getHelpText();
 
@@ -259,7 +264,7 @@ String NetworkServer::generateStatusResponse()
     wdt["lastError"] = watchdogManager.getLastError();
 
     String response;
-    serializeJsonPretty(doc, response);
+    serializeJson(doc, response); // Use compact format for network transmission
     return response;
 }
 

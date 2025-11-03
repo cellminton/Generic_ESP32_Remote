@@ -218,7 +218,7 @@ String PinController::getAllPinStates()
     return result;
 }
 
-void PinController::resetAllPins()
+bool PinController::resetAllPins()
 {
 #if ENABLE_SERIAL_DEBUG
     Serial.println("[PinCtrl] Resetting all pins");
@@ -248,6 +248,8 @@ void PinController::resetAllPins()
     _pinStates.clear();
     _pinToPWMChannel.clear();
     _nextPWMChannel = 0;
+
+    return true;
 }
 
 String PinController::getStateJSON()

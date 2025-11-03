@@ -24,6 +24,8 @@
 #include "PinController.h"
 #include "NetworkServer.h"
 #include "SerialCommandHandler.h"
+#include "WebServer.h"
+#include "TelegramNotifier.h"
 
 // Global instances
 WiFiManager wifiManager;
@@ -32,6 +34,8 @@ CommandParser commandParser;
 PinController pinController;
 NetworkServer *networkServer = nullptr;
 SerialCommandHandler *serialHandler = nullptr;
+WebServer *webServer = nullptr;
+TelegramNotifier *telegramNotifier = nullptr;
 
 // Status LED control
 unsigned long lastLEDBlink = 0;
@@ -116,6 +120,24 @@ void setup()
         networkServer = new NetworkServer(commandParser, pinController);
         networkServer->begin();
 
+#if ENABLE_SERIAL_DEBUG
+        Serial.println("[Main] Initializing Web Server...");
+#endif
+
+        webServer = new WebServer(pinController, 80);
+        webServer->begin();
+
+#if ENABLE_TELEGRAM_NOTIFICATIONS
+#if ENABLE_SERIAL_DEBUG
+        Serial.println("[Main] Initializing Telegram Notifier...");
+#endif
+        telegramNotifier = new TelegramNotifier();
+        telegramNotifier->begin(&watchdogManager);
+
+        // Queue IP address notification (will be sent in loop to avoid blocking)
+        telegramNotifier->queueIPNotification(wifiManager.getIPAddress(), wifiManager.getCurrentSSID());
+#endif
+
         ledBlinkInterval = LED_BLINK_CONNECTED;
 
 #if ENABLE_SERIAL_DEBUG
@@ -126,6 +148,8 @@ void setup()
         Serial.println(wifiManager.getStatusString());
         Serial.printf("TCP Server: %s:%d\n", wifiManager.getIPAddress().c_str(), TCP_SERVER_PORT);
         Serial.printf("UDP Server: %s:%d\n", wifiManager.getIPAddress().c_str(), UDP_SERVER_PORT);
+        Serial.printf("Web Server: http://%s/\n", wifiManager.getIPAddress().c_str());
+        Serial.printf("Web Server: http://esp32-controller.local/\n");
         Serial.println("========================================");
         Serial.println();
 #endif
@@ -154,11 +178,33 @@ void loop()
     if (wifiManager.isConnected() && networkServer == nullptr)
     {
 #if ENABLE_SERIAL_DEBUG
-        Serial.println("[Main] WiFi connected, starting server...");
+        Serial.println("[Main] WiFi connected, starting servers...");
 #endif
 
         networkServer = new NetworkServer(commandParser, pinController);
         networkServer->begin();
+
+        webServer = new WebServer(pinController, 80);
+        webServer->begin();
+
+#if ENABLE_TELEGRAM_NOTIFICATIONS
+        if (telegramNotifier == nullptr)
+        {
+#if ENABLE_SERIAL_DEBUG
+            Serial.println("[Main] Initializing Telegram Notifier...");
+#endif
+            telegramNotifier = new TelegramNotifier();
+            telegramNotifier->begin(&watchdogManager);
+        }
+
+        // Reset notification flag for new connection and queue IP notification
+        if (telegramNotifier != nullptr)
+        {
+            telegramNotifier->resetNotificationFlag();
+            telegramNotifier->queueIPNotification(wifiManager.getIPAddress(), wifiManager.getCurrentSSID());
+        }
+#endif
+
         ledBlinkInterval = LED_BLINK_CONNECTED;
         watchdogManager.clearErrors();
 
@@ -166,6 +212,7 @@ void loop()
         Serial.println(wifiManager.getStatusString());
         Serial.printf("TCP Server: %s:%d\n", wifiManager.getIPAddress().c_str(), TCP_SERVER_PORT);
         Serial.printf("UDP Server: %s:%d\n", wifiManager.getIPAddress().c_str(), UDP_SERVER_PORT);
+        Serial.printf("Web Server: http://%s/\n", wifiManager.getIPAddress().c_str());
 #endif
     }
 
@@ -183,12 +230,31 @@ void loop()
         if (!wifiManager.isConnected() && networkServer != nullptr)
         {
 #if ENABLE_SERIAL_DEBUG
-            Serial.println("[Main] WiFi disconnected, stopping server...");
+            Serial.println("[Main] WiFi disconnected, stopping servers...");
 #endif
             delete networkServer;
             networkServer = nullptr;
+
+            delete webServer;
+            webServer = nullptr;
+
+#if ENABLE_TELEGRAM_NOTIFICATIONS
+            // Keep Telegram instance but reset notification flag
+            if (telegramNotifier != nullptr)
+            {
+                telegramNotifier->resetNotificationFlag();
+            }
+#endif
         }
     }
+
+#if ENABLE_TELEGRAM_NOTIFICATIONS
+    // Handle Telegram notifications if WiFi is connected
+    if (wifiManager.isConnected() && telegramNotifier != nullptr)
+    {
+        telegramNotifier->loop();
+    }
+#endif
 
     // Handle serial commands
     if (serialHandler != nullptr)

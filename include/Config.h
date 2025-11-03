@@ -16,22 +16,27 @@
 // WiFi reconnection attempt interval (milliseconds)
 #define WIFI_RECONNECT_INTERVAL 30000
 
-// WiFi credentials - Add your networks here
+// WiFi credentials structure
+// NOTE: This must be defined BEFORE including Credentials.h
 struct WiFiCredentials
 {
     const char *ssid;
     const char *password;
 };
 
-// Define your WiFi networks in order of preference
-const WiFiCredentials WIFI_NETWORKS[] = {
-    {"Meta-Soziales-Netzwerk", "IjWbw21$"},
-    {"JUSTUS'", "thisisjustus'wifi"},
-    {"nufology", "nufonufo"},
-    // Add more networks as needed
-};
+// ============================================================================
+// IMPORTANT: Credentials Setup
+// ============================================================================
+// Sensitive credentials (WiFi passwords, Telegram tokens) are stored in
+// Credentials.h which is git-ignored for security.
+//
+// TO SET UP:
+// 1. Copy include/Credentials.h.example to include/Credentials.h
+// 2. Edit Credentials.h with your actual credentials
+// 3. Never commit Credentials.h to version control!
+// ============================================================================
 
-const int WIFI_NETWORK_COUNT = sizeof(WIFI_NETWORKS) / sizeof(WiFiCredentials);
+#include "Credentials.h"
 
 // ============================================================================
 // Network Server Configuration
@@ -107,6 +112,17 @@ const int SAFE_PIN_COUNT = sizeof(SAFE_PINS) / sizeof(int);
 
 // Heartbeat interval for status messages (milliseconds)
 #define HEARTBEAT_INTERVAL 60000
+
+// ============================================================================
+// Telegram Configuration
+// ============================================================================
+
+// Enable/disable Telegram notifications
+#define ENABLE_TELEGRAM_NOTIFICATIONS true
+
+// Telegram message check interval (milliseconds)
+// How often to check for new messages from Telegram
+#define TELEGRAM_CHECK_INTERVAL 10000
 
 // ============================================================================
 // Error Recovery Configuration

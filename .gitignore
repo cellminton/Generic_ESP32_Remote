@@ -36,7 +36,8 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
-# Credentials (if you create a separate file)
+# Credentials - IMPORTANT: Never commit these files!
+Credentials.h
 credentials.h
 secrets.h
 

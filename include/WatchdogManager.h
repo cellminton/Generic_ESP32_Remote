@@ -50,6 +50,12 @@ public:
     // Get error statistics
     String getErrorStats();
 
+    // Temporarily suspend watchdog monitoring (for long blocking operations)
+    void suspend();
+
+    // Resume watchdog monitoring
+    void resume();
+
 private:
     unsigned long _lastFeed;
     unsigned long _startTime;

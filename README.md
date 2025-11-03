@@ -15,6 +15,8 @@ structure.
   network
 - **Auto-Reconnection**: Automatic reconnection on connection loss
 - **Dual Protocol Support**: TCP (reliable) and UDP (fast) servers
+- **Web Interface**: Modern responsive web UI for browser-based control
+- **RESTful API**: HTTP endpoints for integration with other systems
 
 ### 🎮 Pin Control
 
@@ -22,6 +24,7 @@ structure.
 - **PWM Support**: 8-bit PWM control (0-255) on all GPIO pins
 - **State Tracking**: Maintains pin states across operations
 - **Safe Pin Configuration**: Predefined safe pins to avoid boot issues
+- **Real-time Updates**: Web interface with live status monitoring
 
 ### 🛡️ Robustness & Resilience
 
@@ -52,15 +55,33 @@ structure.
 
 ### 3. Configuration
 
-Edit `include/Config.h` and update your WiFi credentials:
+**Important: Set up your credentials file first!**
 
-```cpp
-const WiFiCredentials WIFI_NETWORKS[] = {
-    {"YourPrimarySSID", "YourPrimaryPassword"},
-    {"YourSecondarySSID", "YourSecondaryPassword"},
-    {"YourTertiarySSID", "YourTertiaryPassword"},
-};
-```
+1. Copy the credentials template:
+
+   ```bash
+   cp include/Credentials.h.example include/Credentials.h
+   ```
+
+2. Edit `include/Credentials.h` and add your actual credentials:
+
+   ```cpp
+   // WiFi networks (in order of preference)
+   const WiFiCredentials WIFI_NETWORKS[] = {
+       {"YourPrimarySSID", "YourPrimaryPassword"},
+       {"YourSecondarySSID", "YourSecondaryPassword"},
+   };
+
+   // Telegram Bot credentials (optional, for notifications)
+   #define TELEGRAM_BOT_TOKEN "your_bot_token_from_BotFather"
+   #define TELEGRAM_CHAT_ID "your_chat_id_from_userinfobot"
+   ```
+
+3. **Security Note**: `Credentials.h` is git-ignored and will never be
+   committed. Keep your credentials safe!
+
+4. (Optional) Adjust other settings in `include/Config.h` like ports, timeouts,
+   or pin configurations.
 
 ### 4. Upload
 
@@ -88,8 +109,26 @@ After upload, check the Serial Monitor (115200 baud) for the device IP address:
 Connected to YourSSID (IP: 192.168.1.100, RSSI: -45 dBm)
 TCP Server: 192.168.1.100:8888
 UDP Server: 192.168.1.100:8889
+Web Server: http://192.168.1.100/
+Web Server: http://esp32-controller.local/
 ========================================
 ```
+
+### 6. Access the Web Interface
+
+Open your browser and navigate to:
+
+- `http://192.168.1.100/` (use your ESP32's IP address)
+- `http://esp32-controller.local/` (mDNS hostname - works on most networks)
+
+The web interface provides:
+
+- 🎛️ Interactive pin controls
+- 📊 Real-time system status
+- 💡 Digital ON/OFF buttons
+- 🎚️ PWM sliders (0-255)
+- 📱 Mobile-responsive design
+- 🔄 Auto-updating status display
 
 ## Command Reference
 
@@ -310,6 +349,183 @@ GET 13
 TOGGLE 13
 PWM 25 200
 STATUS
+```
+
+### Using Python (TCP)
+
+```python
+import socket
+import json
+
+# Connect to ESP32
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect(('192.168.1.100', 8888))
+
+# Send JSON command
+command = {"cmd": "SET", "pin": 13, "value": 1}
+sock.send((json.dumps(command) + '\n').encode())
+
+# Read response
+response = sock.recv(1024).decode()
+print(response)
+
+sock.close()
+```
+
+### Using HTTP/REST API
+
+The web server provides RESTful API endpoints for easy integration:
+
+#### Get System Status
+
+```bash
+curl http://192.168.1.100/api/status
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "freeHeap": 245678,
+  "chipModel": "ESP32-D0WDQ6",
+  "chipCores": 2,
+  "cpuFreq": 240,
+  "uptime": 3600,
+  "tcpPort": 8888,
+  "udpPort": 8889,
+  "webPort": 80
+}
+```
+
+#### Set Pin Digital
+
+```bash
+curl -X POST "http://192.168.1.100/api/pin/set?pin=13&value=1"
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Pin set successfully"
+}
+```
+
+#### Get Pin State
+
+```bash
+curl "http://192.168.1.100/api/pin/get?pin=13"
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "pin": 13,
+  "value": 1,
+  "mode": "DIGITAL"
+}
+```
+
+#### Toggle Pin
+
+```bash
+curl -X POST "http://192.168.1.100/api/pin/toggle?pin=13"
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Pin toggled successfully",
+  "newValue": 0
+}
+```
+
+#### Set PWM
+
+```bash
+curl -X POST "http://192.168.1.100/api/pin/pwm?pin=25&value=128"
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "PWM set successfully"
+}
+```
+
+#### Reset All Pins
+
+```bash
+curl -X POST "http://192.168.1.100/api/reset"
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "All pins reset successfully"
+}
+```
+
+### Using Python with requests library
+
+```python
+import requests
+
+BASE_URL = "http://192.168.1.100"
+
+# Get status
+response = requests.get(f"{BASE_URL}/api/status")
+print(response.json())
+
+# Set pin
+response = requests.post(f"{BASE_URL}/api/pin/set", params={"pin": 13, "value": 1})
+print(response.json())
+
+# Set PWM
+response = requests.post(f"{BASE_URL}/api/pin/pwm", params={"pin": 25, "value": 200})
+print(response.json())
+
+# Reset all pins
+response = requests.post(f"{BASE_URL}/api/reset")
+print(response.json())
+```
+
+### Using Node.js with axios
+
+```javascript
+const axios = require('axios');
+
+const BASE_URL = 'http://192.168.1.100';
+
+async function controlESP32() {
+  // Get status
+  let response = await axios.get(`${BASE_URL}/api/status`);
+  console.log('Status:', response.data);
+
+  // Set pin
+  response = await axios.post(`${BASE_URL}/api/pin/set`, null, {
+    params: { pin: 13, value: 1 },
+  });
+  console.log('Set pin:', response.data);
+
+  // Set PWM
+  response = await axios.post(`${BASE_URL}/api/pin/pwm`, null, {
+    params: { pin: 25, value: 200 },
+  });
+  console.log('Set PWM:', response.data);
+}
+
+controlESP32();
 ```
 
 ### Using Python (TCP)

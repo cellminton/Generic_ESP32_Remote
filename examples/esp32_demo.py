@@ -209,6 +209,7 @@ def run_interactive_mode(esp: ESP32Controller):
     print("  toggle <pin>       - Toggle pin")
     print("  pwm <pin> <0-255>  - Set PWM value")
     print("  status             - Get system status")
+    print("  reset              - Reset all pins to LOW")
     print("  quit               - Exit interactive mode")
     print()
 
@@ -256,6 +257,11 @@ def run_interactive_mode(esp: ESP32Controller):
                     print(f"✓ Pin {pin} PWM set to {value}")
                 else:
                     print(f"✗ Failed to set PWM on pin {pin}")
+            elif parts[0] == "reset":
+                if esp.reset_pins():
+                    print("✓ All pins reset to LOW")
+                else:
+                    print("✗ Failed to reset pins")
 
             elif parts[0] == "status":
                 status = esp.get_status()
@@ -308,22 +314,27 @@ def main():
 
     try:
         # Run demos
-        if not demo_basic_commands(esp):
+
+        # reset all pins
+        if not esp.reset_pins():
             return 1
 
-        input("\nPress Enter to continue to PWM demo...")
-        if not demo_pwm_control(esp):
-            return 1
+        # if not demo_basic_commands(esp):
+        #     return 1
 
-        input("\nPress Enter to continue to multiple pin demo...")
-        if not demo_multiple_pins(esp):
-            return 1
+        # input("\nPress Enter to continue to PWM demo...")
+        # if not demo_pwm_control(esp):
+        #     return 1
 
-        input("\nPress Enter to continue to performance comparison...")
-        if not demo_udp_vs_tcp(esp):
-            return 1
+        # input("\nPress Enter to continue to multiple pin demo...")
+        # if not demo_multiple_pins(esp):
+        #     return 1
 
-        input("\nPress Enter to start interactive mode (or Ctrl+C to quit)...")
+        # input("\nPress Enter to continue to performance comparison...")
+        # if not demo_udp_vs_tcp(esp):
+        #     return 1
+
+        # input("\nPress Enter to start interactive mode (or Ctrl+C to quit)...")
         run_interactive_mode(esp)
 
     except KeyboardInterrupt:
